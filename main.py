@@ -14,7 +14,8 @@ def home():
 api_id =36700447  # Yahan apna api_id likhein
 api_hash = '093117f52d27c69643b26eb2f16a2015' # Yahan apna api_hash likhein
 
-client = TelegramClient('userprotect', api_id, api_hash)
+# Filename ko 'userprotect' se hata kar '/etc/secrets/userprotect.session' kar dein
+client = TelegramClient('/etc/secrets/userprotect.session', api_id, api_hash))
 
 # Message blocking logic
 @client.on(events.NewMessage(incoming=True))
