@@ -2,51 +2,30 @@ from telethon import TelegramClient, events
 from telethon.tl.functions.contacts import BlockRequest
 import asyncio
 import database
-import config 
+import config
+from flask import Flask
+from threading import Thread
 
-api_id = 36700447  # Yahan apni ID daalein
-api_hash = '093117f52d27c69643b26eb2f16a2015' # Yahan apna hash daalein
+# Web server setup (Render ke liye)
+app = Flask(__name__)
+@app.route('/')
+def home():
+    return "Bot is running!"
 
+api_id = 36700447
+api_hash = '093117f52d27c69643b26eb2f16a2015'
 client = TelegramClient('userprotect', api_id, api_hash)
 
-@client.on(events.NewMessage(incoming=True))
-async def incoming_handler(event):
-    if not event.is_private: return
-    sender = await event.get_sender()
-    if sender.bot: return
+# (Aapke baaki handlers wahi rahenge jo aapne upar diye hain)
+# ... [Yahan apne incoming_handler aur outgoing_handler wahi paste karein] ...
 
-    database.add_user(sender.id)
-    user = database.get_user(sender.id) # (id, count, protection)
-    
-    # Agar protection ON (1) hai, toh bot chup rahega
-    if user[2] == 1: return
+# Bot ko background mein chalane ka function
+def run_bot():
+    client.start()
+    client.run_until_disconnected()
 
-    new_count = user[1] + 1
-    database.update_count(sender.id, new_count)
-
-    if new_count == 1:
-        await event.reply(config.FIRST_WARNING)
-    elif new_count == 2:
-        await event.reply(config.SECOND_WARNING)
-    elif new_count >= 3:
-        await event.reply(config.FINAL_MESSAGE)
-        await client(BlockRequest(sender.id))
-        database.reset_user(sender.id)
-
-@client.on(events.NewMessage(outgoing=True))
-async def outgoing_handler(event):
-    if not event.is_private: return
-    chat = await event.get_chat()
-    
-    # Aapne message bheja, toh Protection ON (1) kar do
-    database.set_protection(chat.id, 1)
-    
-    # 10 minute (600 seconds) wait karo
-    await asyncio.sleep(600)
-    
-    # 10 minute baad Protection OFF (0) kar do
-    database.set_protection(chat.id, 0)
-
-print("Bot is running perfectly...")
-client.start()
-client.run_until_disconnected()
+if __name__ == "__main__":
+    # Bot ko ek nayi thread mein shuru karein
+    Thread(target=run_bot).start()
+    # Flask server ko port 10000 par run karein
+    app.run(host='0.0.0.0', port=10000)
