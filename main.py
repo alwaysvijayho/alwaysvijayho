@@ -1,6 +1,8 @@
 from telethon import TelegramClient, events
-from telethon.tl.functions.contacts import BlockRequest, GetContactsRequest
-from telethon.tl.types import User
+from telethon.tl.functions.contacts import (
+    BlockRequest,
+    GetContactsRequest
+)
 
 import asyncio
 import logging
@@ -10,6 +12,10 @@ import config
 import database
 
 
+# ==========================
+# Logging
+# ==========================
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s"
@@ -17,6 +23,10 @@ logging.basicConfig(
 
 logger = logging.getLogger("UserProtectBOT")
 
+
+# ==========================
+# Telegram Client
+# ==========================
 
 client = TelegramClient(
     "userprotect",
@@ -30,11 +40,19 @@ print("🚩 UserProtectBOT v2 Starting...")
 print("=" * 60)
 
 
-# -----------------------------
-# Helpers
-# -----------------------------
+# ==========================
+# Helper Functions
+# ==========================
+
+def log(message):
+    if config.ENABLE_LOGS:
+        print(message)
+
 
 async def is_contact(user_id):
+    """
+    Return True if user exists in contacts.
+    """
 
     try:
 
@@ -54,28 +72,35 @@ async def is_contact(user_id):
         return False
 
 
-def log(text):
-
-    if config.ENABLE_LOGS:
-        print(text)
-
-
 async def enable_after_timeout(user_id):
+    """
+    Re-enable protection after timeout.
+    """
 
     await asyncio.sleep(config.REPLY_TIMEOUT)
 
     database.enable_protection(user_id)
 
-   log(f"Protection Enabled Again -> {user_id}")
+    log(f"🛡 Protection Enabled Again -> {user_id}")
 
-# -----------------------------
+
+def get_message_count(user):
+
+    return user[3]
+
+
+def protection_enabled(user):
+    return user[4] == 1
+
+
+# ==========================
 # Incoming Messages
-# -----------------------------
+# ==========================
 
 @client.on(events.NewMessage(incoming=True))
 async def incoming_handler(event):
 
-    # Sirf Private Chat
+    # Sirf private chats
     if not event.is_private:
         return
 
@@ -85,7 +110,7 @@ async def incoming_handler(event):
     if getattr(sender, "bot", False):
         return
 
-    # Apne khud ke messages ignore
+    # Khud ke outgoing messages ignore
     if event.out:
         return
 
@@ -94,11 +119,11 @@ async def incoming_handler(event):
         if await is_contact(sender.id):
             return
 
-    # User Database me add karo
+    # Database me user add karo
     database.add_user(
         sender.id,
-        sender.username if sender.username else "",
-        sender.first_name if sender.first_name else ""
+        sender.username or "",
+        sender.first_name or ""
     )
 
     user = database.get_user(sender.id)
@@ -107,50 +132,58 @@ async def incoming_handler(event):
         return
 
     # Protection OFF hai to kuch mat karo
-    if user[4] == 0:
+    if not protection_enabled(user):
         return
 
-    count = user[3] + 1
+    count = get_message_count(user) + 1
 
     database.update_count(sender.id, count)
 
-    log("=" * 50)
-    log(f"📩 New Message From : {sender.first_name}")
+    log("=" * 60)
+    log(f"📩 New DM : {sender.first_name}")
     log(f"🆔 User ID : {sender.id}")
-    log(f"📨 Message Count : {count}")
+    log(f"📨 Count : {count}")
 
     # -----------------------------
-    # First Warning
+    # Warning 1
     # -----------------------------
     if count == 1:
 
         await event.reply(config.FIRST_WARNING)
 
         log("✅ First Warning Sent")
+        return
 
     # -----------------------------
-    # Second Warning
+    # Warning 2
     # -----------------------------
-    elif count == 2:
+    if count == 2:
 
         await event.reply(config.SECOND_WARNING)
 
         log("⚠️ Second Warning Sent")
+        return
 
-    # -----------------------------
-    # Third Message = Block
-    # -----------------------------
-    elif count >= config.MAX_MESSAGES:
+  # -----------------------------
+# Third Message = Block
+# -----------------------------
+if count >= config.MAX_MESSAGES:
 
-        await event.reply(config.FINAL_WARNING)
+    await event.reply(config.FINAL_WARNING)
 
-       await client(BlockRequest(id=sender.id))
+    try:
+        await client(BlockRequest(id=sender.id))
 
+        database.disable_protection(sender.id)
         database.reset_count(sender.id)
 
-        log("🚫 User Blocked Successfully")# -----------------------------
-# Outgoing Messages (Your Reply)
-# -----------------------------
+        log("🚫 User Blocked Successfully")
+
+    except Exception as e:
+        logger.error(f"Block Error : {e}")
+# ==========================
+# Outgoing Messages
+# ==========================
 
 @client.on(events.NewMessage(outgoing=True))
 async def outgoing_handler(event):
@@ -158,31 +191,28 @@ async def outgoing_handler(event):
     if not event.is_private:
         return
 
-    # Sirf reply par protection OFF hogi
-    if not event.is_reply:
-        return
+    user = await event.get_chat()
 
-    reply = await event.get_reply_message()
+    database.add_user(
+        user.id,
+        getattr(user, "username", "") or "",
+        getattr(user, "first_name", "") or ""
+    )
 
-    if reply is None:
-        return
+    database.disable_protection(user.id)
+    database.reset_count(user.id)
+    database.update_reply_time(user.id, int(time.time()))
 
-    user_id = reply.sender_id
+    log("=" * 60)
+    log(f"💬 You replied to : {user.id}")
+    log("🛡 Protection Disabled")
 
-    database.disable_protection(user_id)
-    database.reset_count(user_id)
-    database.update_reply_time(user_id, int(time.time()))
-
-    log("=" * 50)
-    log(f"💬 You Replied : {user_id}")
-    log("🛡 Protection Disabled For 10 Minutes")
-
-    asyncio.create_task(enable_after_timeout(user_id))
+    asyncio.create_task(enable_after_timeout(user.id))
 
 
-# -----------------------------
+# ==========================
 # Startup
-# -----------------------------
+# ==========================
 
 async def main():
 
