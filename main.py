@@ -4,6 +4,8 @@ from telethon.tl.functions.contacts import (
     GetContactsRequest
 )
 
+from flask import Flask
+from threading import Thread
 import asyncio
 import logging
 import time
@@ -224,7 +226,25 @@ async def main():
 
 
 if __name__ == "__main__":
+# Web server start karne ke liye
+app = Flask(__name__)
+@app.route('/')
+def home():
+    return "Bot is alive!"
 
+def run_web():
+    app.run(host='0.0.0.0', port=10000)
+
+if __name__ == "__main__":
+    # Web server ko alag thread mein chalao
+    Thread(target=run_web).start()
+    
+    # Telegram bot start karo
     client.start()
+    client.run_until_disconnected()
 
-    client.loop.run_until_complete(main())
+
+ client.start()
+
+    client.loop.run_until_complete(main())     
+    
