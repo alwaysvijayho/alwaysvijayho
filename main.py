@@ -1,4 +1,3 @@
-import asyncio
 from telethon import TelegramClient, events
 from telethon.tl.functions.contacts import BlockRequest
 from flask import Flask
@@ -12,36 +11,23 @@ api_id = 36700447
 api_hash = '093117f52d27c69643b26eb2f16a2015' 
 client = TelegramClient('userprotect', api_id, api_hash)
 
-# Cloud se warn count lena
-async def get_warn_count(user_id):
-    async for msg in client.iter_messages('me', search=f"WARN:{user_id}:"):
-        return int(msg.text.split(":")[2])
-    return 0
-
-# Cloud par warn count save karna
-async def save_warn_count(user_id, count):
-    # Purana record delete karo
-    async for msg in client.iter_messages('me', search=f"WARN:{user_id}:"):
-        await msg.delete()
-    # Naya record save karo
-    if count > 0:
-        await client.send_message('me', f"WARN:{user_id}:{count}")
+# Temporary memory
+warnings = {}
 
 @client.on(events.NewMessage(incoming=True))
 async def handler(event):
     if not event.is_private: return
     sender = await event.get_sender()
-    user_id = str(sender.id)
+    user_id = sender.id
 
-    # Agar maine pehle reply diya hai, toh stop
-    async for msg in client.iter_messages(sender.id, limit=3):
+    # Check if already replied
+    async for msg in client.iter_messages(user_id, limit=3):
         if msg.out: return
 
-    # Count badhao
-    count = await get_warn_count(user_id) + 1
-    await save_warn_count(user_id, count)
+    # Update count
+    warnings[user_id] = warnings.get(user_id, 0) + 1
+    count = warnings[user_id]
 
-    # Messages
     if count == 1:
         await event.reply("✨ Hello! Har Har Mahadev. Main abhi offline hoon. Message chhod dein.")
     elif count == 2:
@@ -51,7 +37,7 @@ async def handler(event):
     elif count >= 4:
         await event.reply("🚫 Spamming ke karan block.")
         await client(BlockRequest(sender))
-        await save_warn_count(user_id, 0) # Reset
+        warnings[user_id] = 0
 
 def run_bot():
     client.start()
