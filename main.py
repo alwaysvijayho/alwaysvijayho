@@ -71,4 +71,4 @@ def run_bot():
 
 if __name__ == "__main__":
     Thread(target=run_bot).start()
-    app.run(host='0.0.0.0', port=10000)v
+    app.run(host='0.0.0.0', port=10000)
