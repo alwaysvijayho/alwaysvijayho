@@ -39,7 +39,7 @@ Aapne warnings ko ignore kiya.
 
 Spam se suraksha ke liye aapko automatically block kar diya gaya hai.
 
-" Meow Meow". 
+" Meow Meow".
 """
 
 MAX_MESSAGES = 3
