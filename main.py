@@ -164,23 +164,23 @@ async def incoming_handler(event):
         log("⚠️ Second Warning Sent")
         return
 
-  # -----------------------------
-# Third Message = Block
-# -----------------------------
-if count >= config.MAX_MESSAGES:
+     # -----------------------------
+    # Third Message = Block
+    # -----------------------------
+    if count >= config.MAX_MESSAGES:
 
-    await event.reply(config.FINAL_WARNING)
+        await event.reply(config.FINAL_WARNING)
 
-    try:
-        await client(BlockRequest(id=sender.id))
+        try:
+            await client(BlockRequest(id=sender.id))
 
-        database.disable_protection(sender.id)
-        database.reset_count(sender.id)
+            database.disable_protection(sender.id)
+            database.reset_count(sender.id)
 
-        log("🚫 User Blocked Successfully")
+            log("🚫 User Blocked Successfully")
 
-    except Exception as e:
-        logger.error(f"Block Error : {e}")
+        except Exception as e:
+            logger.error(f"Block Error : {e}")
 # ==========================
 # Outgoing Messages
 # ==========================
