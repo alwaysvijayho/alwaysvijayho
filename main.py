@@ -20,24 +20,27 @@ async def handler(event):
     sender = await event.get_sender()
     user_id = sender.id
 
-    # Check if already replied
-    async for msg in client.iter_messages(user_id, limit=3):
-        if msg.out: return
+    # Check if I have already replied (Reset logic)
+    async for msg in client.iter_messages(user_id, limit=5):
+        if msg.out:
+            warnings[user_id] = 0  # Aapka reply aate hi count reset
+            return
 
     # Update count
     warnings[user_id] = warnings.get(user_id, 0) + 1
     count = warnings[user_id]
 
+    # Female Tone Warnings
     if count == 1:
-        await event.reply("✨ Hello! Har Har Mahadev. Main abhi offline hoon. Message chhod dein.")
+        await event.reply("🙏 Har Har Mahadev! Main abhi busy hoon aur offline hoon. Aap apna message chhod dijiye, main free hokar reply karungi.")
     elif count == 2:
-        await event.reply("⚠️ Warning 2/3: Dobara message na karein.")
+        await event.reply("⚠️ Warning 2/3: Kripya baar-baar message karke spam na karein. Main busy hoon, thoda dhairya rakhein.")
     elif count == 3:
-        await event.reply("⚠️ Warning 3/3: Ye akhri warning hai!")
+        await event.reply("⚠️ Warning 3/3: Ye meri aakhri warning hai! Kripya spamming band karein, varna mujhe majboor hokar aapko block karna padega.")
     elif count >= 4:
-        await event.reply("🚫 Spamming ke karan block.")
+        await event.reply("🚫 Aapne meri warning ignore ki, isliye ab aap block ho chuke hain.")
         await client(BlockRequest(sender))
-        warnings[user_id] = 0
+        warnings[user_id] = 0 # Block karne ke baad reset
 
 def run_bot():
     client.start()
