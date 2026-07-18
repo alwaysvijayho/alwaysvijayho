@@ -56,7 +56,12 @@ def reset_count(user_id):
 
 def enable_protection(user_id):
     cursor.execute(
-        "UPDATE users SET protection=1 WHERE user_id=?",
+        """
+        UPDATE users
+        SET protection=1,
+            message_count=0
+        WHERE user_id=?
+        """,
         (user_id,)
     )
     conn.commit()
