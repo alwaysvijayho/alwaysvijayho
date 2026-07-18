@@ -1,35 +1,151 @@
 import sqlite3
 
-# Database connection
-db = sqlite3.connect("users.db", check_same_thread=False)
-cursor = db.cursor()
+conn = sqlite3.connect(
+    "userprotect.db",
+    check_same_thread=False
+)
 
-# Table create karna
+cursor = conn.cursor()
+
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users(
-    user_id INTEGER PRIMARY KEY,
-    msg_count INTEGER DEFAULT 0,
-    protection INTEGER DEFAULT 0
+
+user_id INTEGER PRIMARY KEY,
+
+username TEXT,
+
+first_name TEXT,
+
+message_count INTEGER DEFAULT 0,
+
+protection INTEGER DEFAULT 1,
+
+last_reply INTEGER DEFAULT 0
+
 )
 """)
-db.commit()
 
-def add_user(user_id):
-    cursor.execute("INSERT OR IGNORE INTO users(user_id) VALUES(?)", (user_id,))
-    db.commit()
+conn.commit()
+
+
+def add_user(user_id, username="", first_name=""):
+
+    cursor.execute("""
+
+    INSERT OR IGNORE INTO users(
+
+    user_id,
+
+    username,
+
+    first_name
+
+    )
+
+    VALUES(?,?,?)
+
+    """,
+
+    (
+
+    user_id,
+
+    username,
+
+    first_name
+
+    )
+
+    )
+
+    conn.commit()
+
 
 def get_user(user_id):
-    cursor.execute("SELECT * FROM users WHERE user_id=?", (user_id,))
+
+    cursor.execute(
+
+        "SELECT * FROM users WHERE user_id=?",
+
+        (user_id,)
+
+    )
+
     return cursor.fetchone()
 
+
 def update_count(user_id, count):
-    cursor.execute("UPDATE users SET msg_count=? WHERE user_id=?", (count, user_id))
-    db.commit()
 
-def set_protection(user_id, value):
-    cursor.execute("UPDATE users SET protection=? WHERE user_id=?", (value, user_id))
-    db.commit()
+    cursor.execute(
 
-def reset_user(user_id):
-    cursor.execute("UPDATE users SET msg_count=0, protection=0 WHERE user_id=?", (user_id,))
-    db.commit()
+        "UPDATE users SET message_count=? WHERE user_id=?",
+
+        (
+
+            count,
+
+            user_id
+
+        )
+
+    )
+
+    conn.commit()
+
+
+def reset_count(user_id):
+
+    cursor.execute(
+
+        "UPDATE users SET message_count=0 WHERE user_id=?",
+
+        (user_id,)
+
+    )
+
+    conn.commit()
+
+
+def enable_protection(user_id):
+
+    cursor.execute(
+
+        "UPDATE users SET protection=1 WHERE user_id=?",
+
+        (user_id,)
+
+    )
+
+    conn.commit()
+
+
+def disable_protection(user_id):
+
+    cursor.execute(
+
+        "UPDATE users SET protection=0 WHERE user_id=?",
+
+        (user_id,)
+
+    )
+
+    conn.commit()
+
+
+def update_reply_time(user_id, timestamp):
+
+    cursor.execute(
+
+        "UPDATE users SET last_reply=? WHERE user_id=?",
+
+        (
+
+            timestamp,
+
+            user_id
+
+        )
+
+    )
+
+    conn.commit()
