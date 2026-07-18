@@ -1,4 +1,4 @@
-import os
+import asyncio
 from telethon import TelegramClient, events
 from telethon.tl.functions.contacts import BlockRequest
 from flask import Flask
@@ -12,36 +12,20 @@ api_id = 36700447
 api_hash = '093117f52d27c69643b26eb2f16a2015' 
 client = TelegramClient('userprotect', api_id, api_hash)
 
-FILE_PATH = "data.txt"
-
-def update_warn(user_id, count):
-    lines = []
-    if os.path.exists(FILE_PATH):
-        with open(FILE_PATH, "r") as f:
-            lines = f.readlines()
-    
-    new_lines = []
-    found = False
-    for line in lines:
-        if line.startswith(f"{user_id}:"):
-            new_lines.append(f"{user_id}:{count}\n")
-            found = True
-        else:
-            new_lines.append(line)
-    
-    if not found:
-        new_lines.append(f"{user_id}:{count}\n")
-        
-    with open(FILE_PATH, "w") as f:
-        f.writelines(new_lines)
-
-def get_warn(user_id):
-    if not os.path.exists(FILE_PATH): return 0
-    with open(FILE_PATH, "r") as f:
-        for line in f:
-            if line.startswith(f"{user_id}:"):
-                return int(line.split(":")[1])
+# Cloud se warn count lena
+async def get_warn_count(user_id):
+    async for msg in client.iter_messages('me', search=f"WARN:{user_id}:"):
+        return int(msg.text.split(":")[2])
     return 0
+
+# Cloud par warn count save karna
+async def save_warn_count(user_id, count):
+    # Purana record delete karo
+    async for msg in client.iter_messages('me', search=f"WARN:{user_id}:"):
+        await msg.delete()
+    # Naya record save karo
+    if count > 0:
+        await client.send_message('me', f"WARN:{user_id}:{count}")
 
 @client.on(events.NewMessage(incoming=True))
 async def handler(event):
@@ -49,22 +33,25 @@ async def handler(event):
     sender = await event.get_sender()
     user_id = str(sender.id)
 
+    # Agar maine pehle reply diya hai, toh stop
     async for msg in client.iter_messages(sender.id, limit=3):
         if msg.out: return
 
-    current_count = get_warn(user_id) + 1
-    update_warn(user_id, current_count)
+    # Count badhao
+    count = await get_warn_count(user_id) + 1
+    await save_warn_count(user_id, count)
 
-    if current_count == 1:
+    # Messages
+    if count == 1:
         await event.reply("✨ Hello! Har Har Mahadev. Main abhi offline hoon. Message chhod dein.")
-    elif current_count == 2:
+    elif count == 2:
         await event.reply("⚠️ Warning 2/3: Dobara message na karein.")
-    elif current_count == 3:
+    elif count == 3:
         await event.reply("⚠️ Warning 3/3: Ye akhri warning hai!")
-    elif current_count >= 4:
-        await event.reply("🚫 Blocked.")
+    elif count >= 4:
+        await event.reply("🚫 Spamming ke karan block.")
         await client(BlockRequest(sender))
-        update_warn(user_id, 0)
+        await save_warn_count(user_id, 0) # Reset
 
 def run_bot():
     client.start()
