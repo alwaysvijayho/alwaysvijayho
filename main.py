@@ -11,21 +11,30 @@ def home(): return "Bot is Active!"
 api_id = 36700447 
 api_hash = '093117f52d27c69643b26eb2f16a2015' 
 client = TelegramClient('userprotect', api_id, api_hash)
-WHITELIST_FILE = "whitelist.txt"
 
-def get_whitelist():
-    if not os.path.exists(WHITELIST_FILE): return set()
-    with open(WHITELIST_FILE, "r") as f:
-        return set(line.strip() for line in f)
+# Warnings ko permanent file mein save karenge
+WARNINGS_FILE = "warnings.txt"
 
-# Yeh function check karega ki kya aapne user ko reply diya hai
+def get_warnings():
+    if not os.path.exists(WARNINGS_FILE): return {}
+    data = {}
+    with open(WARNINGS_FILE, "r") as f:
+        for line in f:
+            uid, count = line.strip().split(":")
+            data[uid] = int(count)
+    return data
+
+def save_warning(user_id, count):
+    warnings = get_warnings()
+    warnings[user_id] = count
+    with open(WARNINGS_FILE, "w") as f:
+        for uid, c in warnings.items():
+            f.write(f"{uid}:{c}\n")
+
 async def check_if_i_replied(user_id):
     async for message in client.iter_messages(int(user_id), limit=5):
-        if message.out: # Agar aapka koi bhi message wahan gaya hai
-            return True
+        if message.out: return True
     return False
-
-user_warnings = {}
 
 @client.on(events.NewMessage(incoming=True))
 async def handler(event):
@@ -33,13 +42,12 @@ async def handler(event):
     sender = await event.get_sender()
     user_id = str(sender.id)
 
-    # 1. Check history: Kya aapne pehle reply diya hai?
-    if await check_if_i_replied(user_id):
-        return 
+    if await check_if_i_replied(user_id): return 
 
-    # 2. Warning Logic
-    user_warnings[user_id] = user_warnings.get(user_id, 0) + 1
-    count = user_warnings[user_id]
+    # Warnings load karo
+    warnings = get_warnings()
+    count = warnings.get(user_id, 0) + 1
+    save_warning(user_id, count)
 
     if count == 1:
         await event.reply("✨ Hello! Har Har Mahadev. Main abhi offline hoon. Agar urgent kaam hai toh message chhod dein. ⚠️ Meow Meow.")
@@ -51,6 +59,8 @@ async def handler(event):
         try:
             await event.reply("🚫 Aapne spamming jari rakhi, isliye bot ne aapko block kar diya hai.")
             await client(BlockRequest(sender))
+            # Block hone ke baad warning reset
+            save_warning(user_id, 0)
             print(f"BLOCKED: {user_id}")
         except Exception as e:
             print(f"BLOCK ERROR: {e}")
@@ -61,4 +71,4 @@ def run_bot():
 
 if __name__ == "__main__":
     Thread(target=run_bot).start()
-    app.run(host='0.0.0.0', port=10000)
+    app.run(host='0.0.0.0', port=10000)v
