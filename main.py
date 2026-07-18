@@ -1,51 +1,200 @@
 from telethon import TelegramClient, events
-from telethon.tl.functions.contacts import BlockRequest
-from flask import Flask
-from threading import Thread
+from telethon.tl.functions.contacts import BlockRequest, GetContactsRequest
+from telethon.tl.types import User
 
-app = Flask(__name__)
-@app.route('/')
-def home(): return "Bot is Active!"
+import asyncio
+import logging
+import time
 
-api_id = 36700447 
-api_hash = '093117f52d27c69643b26eb2f16a2015' 
-client = TelegramClient('userprotect', api_id, api_hash)
+import config
+import database
 
-# Temporary memory
-warnings = {}
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s"
+)
+
+logger = logging.getLogger("UserProtectBOT")
+
+
+client = TelegramClient(
+    "userprotect",
+    config.API_ID,
+    config.API_HASH
+)
+
+
+print("=" * 60)
+print("🚩 UserProtectBOT v2 Starting...")
+print("=" * 60)
+
+
+# -----------------------------
+# Helpers
+# -----------------------------
+
+async def is_contact(user_id):
+
+    try:
+
+        contacts = await client(GetContactsRequest(hash=0))
+
+        for user in contacts.users:
+
+            if user.id == user_id:
+                return True
+
+        return False
+
+    except Exception as e:
+
+        logger.error(e)
+
+        return False
+
+
+def log(text):
+
+    if config.ENABLE_LOGS:
+        print(text)
+
+
+async def enable_after_timeout(user_id):
+
+    await asyncio.sleep(config.REPLY_TIMEOUT)
+
+    database.enable_protection(user_id)
+
+   log(f"Protection Enabled Again -> {user_id}")
+
+# -----------------------------
+# Incoming Messages
+# -----------------------------
 
 @client.on(events.NewMessage(incoming=True))
-async def handler(event):
-    if not event.is_private: return
-    sender = await event.get_sender()
-    user_id = sender.id
+async def incoming_handler(event):
 
-    # Check if I have already replied (Reset logic)
-    async for msg in client.iter_messages(user_id, limit=5):
-        if msg.out:
-            warnings[user_id] = 0  # Aapka reply aate hi count reset
+    # Sirf Private Chat
+    if not event.is_private:
+        return
+
+    sender = await event.get_sender()
+
+    # Bots ignore
+    if getattr(sender, "bot", False):
+        return
+
+    # Apne khud ke messages ignore
+    if event.out:
+        return
+
+    # Contacts ignore
+    if config.IGNORE_CONTACTS:
+        if await is_contact(sender.id):
             return
 
-    # Update count
-    warnings[user_id] = warnings.get(user_id, 0) + 1
-    count = warnings[user_id]
+    # User Database me add karo
+    database.add_user(
+        sender.id,
+        sender.username if sender.username else "",
+        sender.first_name if sender.first_name else ""
+    )
 
-    # Female Tone Warnings
+    user = database.get_user(sender.id)
+
+    if user is None:
+        return
+
+    # Protection OFF hai to kuch mat karo
+    if user[4] == 0:
+        return
+
+    count = user[3] + 1
+
+    database.update_count(sender.id, count)
+
+    log("=" * 50)
+    log(f"📩 New Message From : {sender.first_name}")
+    log(f"🆔 User ID : {sender.id}")
+    log(f"📨 Message Count : {count}")
+
+    # -----------------------------
+    # First Warning
+    # -----------------------------
     if count == 1:
-        await event.reply("🙏 Har Har Mahadev! Main abhi busy hoon aur offline hoon. Aap apna message chhod dijiye, main free hokar reply karungi.")
-    elif count == 2:
-        await event.reply("⚠️ Warning 2/3: Kripya baar-baar message karke spam na karein. Main busy hoon, thoda dhairya rakhein.")
-    elif count == 3:
-        await event.reply("⚠️ Warning 3/3: Ye meri aakhri warning hai! Kripya spamming band karein, varna mujhe majboor hokar aapko block karna padega.")
-    elif count >= 4:
-        await event.reply("🚫 Aapne meri warning ignore ki, isliye ab aap block ho chuke hain.")
-        await client(BlockRequest(sender))
-        warnings[user_id] = 0 # Block karne ke baad reset
 
-def run_bot():
-    client.start()
-    client.run_until_disconnected()
+        await event.reply(config.FIRST_WARNING)
+
+        log("✅ First Warning Sent")
+
+    # -----------------------------
+    # Second Warning
+    # -----------------------------
+    elif count == 2:
+
+        await event.reply(config.SECOND_WARNING)
+
+        log("⚠️ Second Warning Sent")
+
+    # -----------------------------
+    # Third Message = Block
+    # -----------------------------
+    elif count >= config.MAX_MESSAGES:
+
+        await event.reply(config.FINAL_WARNING)
+
+       await client(BlockRequest(id=sender.id))
+
+        database.reset_count(sender.id)
+
+        log("🚫 User Blocked Successfully")# -----------------------------
+# Outgoing Messages (Your Reply)
+# -----------------------------
+
+@client.on(events.NewMessage(outgoing=True))
+async def outgoing_handler(event):
+
+    if not event.is_private:
+        return
+
+    # Sirf reply par protection OFF hogi
+    if not event.is_reply:
+        return
+
+    reply = await event.get_reply_message()
+
+    if reply is None:
+        return
+
+    user_id = reply.sender_id
+
+    database.disable_protection(user_id)
+    database.reset_count(user_id)
+    database.update_reply_time(user_id, int(time.time()))
+
+    log("=" * 50)
+    log(f"💬 You Replied : {user_id}")
+    log("🛡 Protection Disabled For 10 Minutes")
+
+    asyncio.create_task(enable_after_timeout(user_id))
+
+
+# -----------------------------
+# Startup
+# -----------------------------
+
+async def main():
+
+    print("✅ Connected Successfully")
+    print("🚩 UserProtectBOT v2 Running...")
+    print("=" * 60)
+
+    await client.run_until_disconnected()
+
 
 if __name__ == "__main__":
-    Thread(target=run_bot).start()
-    app.run(host='0.0.0.0', port=10000)
+
+    client.start()
+
+    client.loop.run_until_complete(main())
