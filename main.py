@@ -225,9 +225,8 @@ async def main():
     await client.run_until_disconnected()
 
 
-if __name__ == "__main__":
-# Web server start karne ke liye
 app = Flask(__name__)
+
 @app.route('/')
 def home():
     return "Bot is alive!"
@@ -236,15 +235,7 @@ def run_web():
     app.run(host='0.0.0.0', port=10000)
 
 if __name__ == "__main__":
-    # Web server ko alag thread mein chalao
+    # Web server aur bot dono ko ek saath start karo
     Thread(target=run_web).start()
-    
-    # Telegram bot start karo
     client.start()
     client.run_until_disconnected()
-
-
- client.start()
-
-    client.loop.run_until_complete(main())     
-    
