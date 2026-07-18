@@ -1,29 +1,55 @@
+# ==========================
+# Telegram API
+# ==========================
+
 API_ID = 36700447
 API_HASH = "093117f52d27c69643b26eb2f16a2015"
+# ==========================
+# Warning Messages
+# ==========================
 
 FIRST_WARNING = """
-👋 Hello! Har Har Mahadev 
+🙏 Har Har Mahadev! 🚩
 
-Please wait until I reply.
+Main is samay vyast hoon.
 
-Sending spam messages may result in an automatic block.
+Kripya apna message ek hi baar bhej dijiye aur mere reply ka dhairya se intezar karein.
+
+Dhanyavaad. 🙏
 """
 
 SECOND_WARNING = """
-⚠️ Warning!
+🙏 Har Har Mahadev! 🚩
 
-Please don't spam.
+⚠️ Warning (2/3)
 
-If you send one more message before I reply, you will be automatically blocked.
+Aap lagataar messages bhej rahe hain.
+
+Kripya spam na karein aur mere reply ka intezar karein.
+
+Agla message bhejne par aap automatically block ho jayenge.
 """
 
-FINAL_MESSAGE = """
-🚫 You have been automatically blocked.
+FINAL_WARNING = """
+🙏 Har Har Mahadev! 🚩
 
-Reason: Repeated multiple messages before receiving a reply.
+🚫 Auto Block
 
-You may try contacting me again later.
+Aapne baar-baar messages bhejkar warnings ko ignore kiya.
+
+Spam se suraksha ke liye aapko automatically block kar diya gaya hai.
+
+Dhanyavaad.
 """
 
-# 600 seconds = 10 minutes
-REACTIVATE_AFTER = 600
+# ==========================
+# Settings
+# ==========================
+
+MAX_MESSAGES = 3
+
+REPLY_TIMEOUT = 600
+
+ENABLE_LOGS = True
+
+IGNORE_CONTACTS = True
