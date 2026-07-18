@@ -98,7 +98,9 @@ def protection_enabled(user):
 # ==========================
 # Incoming Messages
 # ==========================
-
+@client.on(events.NewMessage(pattern='/start'))
+async def start_handler(event):
+    await event.respond('Bot protection active hai!')
 @client.on(events.NewMessage(incoming=True))
 async def incoming_handler(event):
 
