@@ -1,12 +1,7 @@
-# ==========================
-# Telegram API
-# ==========================
+import os
 
-API_ID = 36700447
-API_HASH = "093117f52d27c69643b26eb2f16a2015"
-# ==========================
-# Warning Messages
-# ==========================
+API_ID = int(os.getenv("API_ID"))
+API_HASH = os.getenv("API_HASH")
 
 FIRST_WARNING = """
 🙏 Har Har Mahadev! 🚩
@@ -25,7 +20,7 @@ SECOND_WARNING = """
 
 Aap lagataar messages bhej rahe hain.
 
-Kripya spam na karein aur mere reply ka intezar karein.
+Kripya spam na karein.
 
 Agla message bhejne par aap automatically block ho jayenge.
 """
@@ -35,21 +30,14 @@ FINAL_WARNING = """
 
 🚫 Auto Block
 
-Aapne baar-baar messages bhejkar warnings ko ignore kiya.
+Aapne warnings ko ignore kiya.
 
 Spam se suraksha ke liye aapko automatically block kar diya gaya hai.
 
 Dhanyavaad.
 """
 
-# ==========================
-# Settings
-# ==========================
-
 MAX_MESSAGES = 3
-
 REPLY_TIMEOUT = 600
-
 ENABLE_LOGS = True
-
 IGNORE_CONTACTS = True
